@@ -13,10 +13,15 @@ import android.widget.Spinner
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.subtranslator.databinding.ActivityMainBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -24,7 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: Prefs
     private lateinit var models: ModelManager
-    private var voskJob: Job? = null
+    private var finishJob: Job? = null
     private var translateJob: Job? = null
     private lateinit var updater: Updater
     private var updateJob: Job? = null
@@ -39,18 +44,27 @@ class MainActivity : AppCompatActivity() {
         models = ModelManager(this)
         updater = Updater(this)
 
-        setupSpinner(binding.sourceSpinner, Languages.sources,
-            Languages.sources.indexOf(Languages.source(prefs.sourceLang))) {
-            prefs.sourceLang = Languages.sources[it].code
+        val engines = listOf(getString(R.string.engine_whisper), getString(R.string.engine_vosk))
+        setupSpinner(binding.engineSpinner, engines, prefs.engine.ordinal) {
+            prefs.engine = Engine.entries[it]
             refresh()
         }
-        setupSpinner(binding.targetSpinner, Languages.targets,
-            Languages.targets.indexOf(Languages.target(prefs.targetLang))) {
-            prefs.targetLang = Languages.targets[it].code
+        val whisperModels = listOf(getString(R.string.whisper_base), getString(R.string.whisper_small))
+        setupSpinner(binding.whisperModelSpinner, whisperModels, prefs.whisperModel.ordinal) {
+            prefs.whisperModel = WhisperModel.entries[it]
+            refresh()
+        }
+        setupSpinner(binding.sourceSpinner, Languages.all, Languages.all.indexOf(prefs.language)) {
+            prefs.sourceLang = Languages.all[it].code
+            refresh()
+        }
+        setupSpinner(binding.targetSpinner, Languages.all,
+            Languages.all.indexOf(Languages.get(prefs.targetLang))) {
+            prefs.targetLang = Languages.all[it].code
             refresh()
         }
 
-        binding.voskButton.setOnClickListener { onVoskButton() }
+        binding.modelButton.setOnClickListener { onModelButton() }
         binding.translateButton.setOnClickListener { downloadTranslation() }
 
         binding.showOriginal.isChecked = prefs.showOriginal
@@ -92,6 +106,16 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= 33) {
             binding.addTileButton.visibility = View.VISIBLE
             binding.addTileButton.setOnClickListener { requestAddTile() }
+        }
+
+        // Background downloads keep running while the app is closed; poll their progress.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    refreshModel()
+                    delay(700)
+                }
+            }
         }
 
         binding.versionLabel.text = getString(R.string.version, BuildConfig.VERSION_NAME)
@@ -185,21 +209,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val source = Languages.source(prefs.sourceLang)
-        val target = Languages.target(prefs.targetLang)
+        val source = prefs.language
+        val target = Languages.get(prefs.targetLang)
         val running = SubtitleService.isRunning
 
+        binding.engineSpinner.isEnabled = !running
+        binding.whisperModelSpinner.isEnabled = !running
+        binding.whisperModelSpinner.visibility =
+            if (prefs.engine == Engine.WHISPER) View.VISIBLE else View.GONE
         binding.sourceSpinner.isEnabled = !running
         binding.targetSpinner.isEnabled = !running
         binding.toggleButton.setText(if (running) R.string.stop_subtitles else R.string.start_subtitles)
-
-        if (voskJob?.isActive != true) {
-            val ready = models.isVoskModelReady(source)
-            binding.voskStatus.setText(if (ready) R.string.model_ready else R.string.model_missing)
-            binding.voskButton.setText(if (ready) R.string.delete_model else R.string.download_model)
-            binding.voskButton.isEnabled = !running
-            binding.voskProgress.visibility = View.GONE
-        }
+        refreshModel()
 
         if (translateJob?.isActive != true) {
             binding.translateStatus.setText(R.string.checking)
@@ -217,36 +238,84 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onVoskButton() {
-        val source = Languages.source(prefs.sourceLang)
-        if (models.isVoskModelReady(source)) {
-            models.deleteVoskModel(source)
-            refresh()
+    /** Shows the state of the speech model the current settings need. */
+    private fun refreshModel() {
+        val running = SubtitleService.isRunning
+        val spec = prefs.recognitionModel
+        val status = binding.modelStatus
+        val button = binding.modelButton
+        val progress = binding.modelProgress
+        progress.visibility = View.GONE
+        button.visibility = View.VISIBLE
+        button.isEnabled = !running
+
+        if (prefs.engine == Engine.WHISPER && !WhisperLib.isCpuSupported) {
+            status.setText(R.string.whisper_cpu_unsupported)
+            button.visibility = View.GONE
             return
         }
-        binding.voskButton.isEnabled = false
-        binding.voskProgress.visibility = View.VISIBLE
-        binding.voskProgress.isIndeterminate = true
-        binding.voskStatus.setText(R.string.downloading)
-        voskJob = lifecycleScope.launch {
-            try {
-                models.downloadVoskModel(source) { p ->
-                    runOnUiThread {
-                        if (p >= 0) {
-                            binding.voskProgress.isIndeterminate = false
-                            binding.voskProgress.progress = p
-                            binding.voskStatus.text = getString(R.string.downloading_percent, p)
-                            if (p == 100) binding.voskStatus.setText(R.string.unpacking)
+        if (spec == null) {
+            status.setText(R.string.vosk_unsupported)
+            button.visibility = View.GONE
+            return
+        }
+        val hint = if (prefs.engine == Engine.WHISPER) "\n" + getString(R.string.whisper_shared_hint) else ""
+        when (val state = models.state(spec)) {
+            DownloadState.Ready -> {
+                status.text = getString(R.string.model_ready) + hint
+                button.setText(R.string.delete_model)
+            }
+            DownloadState.NotDownloaded -> {
+                status.text = getString(R.string.model_missing, spec.sizeMb) + hint
+                button.setText(R.string.download_model)
+            }
+            is DownloadState.Downloading -> {
+                progress.visibility = View.VISIBLE
+                progress.isIndeterminate = state.percent < 0
+                if (state.percent >= 0) progress.progress = state.percent
+                val pct = state.percent.coerceAtLeast(0)
+                status.text = getString(
+                    if (state.waiting) R.string.download_waiting else R.string.downloading_percent, pct
+                )
+                button.setText(R.string.cancel_download)
+                button.isEnabled = true
+            }
+            DownloadState.Finishing -> {
+                progress.visibility = View.VISIBLE
+                progress.isIndeterminate = true
+                status.setText(R.string.unpacking)
+                button.visibility = View.GONE
+                if (finishJob?.isActive != true) {
+                    finishJob = lifecycleScope.launch {
+                        val result = withContext(Dispatchers.IO) { runCatching { models.finish(spec) } }
+                        result.exceptionOrNull()?.let {
+                            Toast.makeText(this@MainActivity,
+                                getString(R.string.download_failed, it.message), Toast.LENGTH_LONG).show()
+                            models.delete(spec)
                         }
+                        refreshModel()
                     }
                 }
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, getString(R.string.download_failed, e.message),
-                    Toast.LENGTH_LONG).show()
             }
-            voskJob = null
-            refresh()
+            is DownloadState.Failed -> {
+                status.text = getString(R.string.download_failed_reason, state.reason)
+                button.setText(R.string.download_model)
+            }
         }
+    }
+
+    private fun onModelButton() {
+        val spec = prefs.recognitionModel ?: return
+        when (models.state(spec)) {
+            DownloadState.Ready -> models.delete(spec)
+            is DownloadState.Downloading -> models.cancel(spec)
+            else -> {
+                val name = if (prefs.engine == Engine.WHISPER) "Whisper ${prefs.whisperModel.name.lowercase()}"
+                    else prefs.language.label
+                models.download(spec, getString(R.string.model_download_title, name))
+            }
+        }
+        refreshModel()
     }
 
     private fun downloadTranslation() {

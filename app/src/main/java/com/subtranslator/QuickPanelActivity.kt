@@ -22,7 +22,7 @@ class QuickPanelActivity : AppCompatActivity() {
         prefs = Prefs(this)
 
         // First run: nothing can work until a speech model is downloaded.
-        if (!ModelManager(this).isVoskModelReady(Languages.source(prefs.sourceLang))) {
+        if (!ModelManager(this).isReady(prefs.recognitionModel)) {
             openSettings()
             return
         }

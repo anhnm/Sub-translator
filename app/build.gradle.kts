@@ -22,7 +22,13 @@ android {
         versionName = "1.$buildNumber"
         buildConfigField("String", "UPDATE_REPO", "\"anhnm/Sub-translator\"")
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // Whisper's native library is built for 64-bit ARM only (practically every phone).
+            abiFilters += listOf("arm64-v8a")
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release")
+            }
         }
     }
 
@@ -43,6 +49,13 @@ android {
             isMinifyEnabled = false
             // Without the secret key (e.g. local builds) fall back to the debug key.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 

@@ -38,8 +38,7 @@ class SubtitleTileService : TileService() {
         val tile = qsTile ?: return
         tile.state = if (SubtitleService.isRunning) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         val prefs = Prefs(this)
-        tile.subtitle = "${Languages.source(prefs.sourceLang).label} → " +
-            Languages.target(prefs.targetLang).label
+        tile.subtitle = "${prefs.language.label} → ${Languages.get(prefs.targetLang).label}"
         tile.updateTile()
     }
 }

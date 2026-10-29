@@ -98,7 +98,8 @@ class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listen
     /** (Re)creates the recognizer and translator for the current language settings. */
     private fun startPipeline() {
         val mp = projection ?: return
-        engine?.stop()
+        val previous = engine
+        previous?.stop()
         translator?.close()
         // Drop captions and pending translations from the previous languages.
         utterance++
@@ -106,15 +107,23 @@ class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listen
         curTranslated = ""
         pendingPartial = null
 
-        val source = Languages.source(prefs.sourceLang)
-        val target = Languages.target(prefs.targetLang)
+        val source = prefs.language
+        val target = Languages.get(prefs.targetLang)
         overlay?.updateLanguageChip()
         overlay?.setLive("", "")
         overlay?.setStatus(getString(R.string.status_loading_model))
 
         translator = createTranslator(source.code, target.code)
-        val modelDir = ModelManager(this).voskModelDir(source)
-        engine = SpeechEngine(mp, source, modelDir, this).also { it.start() }
+        val spec = prefs.recognitionModel
+        if (spec == null || !ModelManager(this).isReady(spec)) {
+            onError(getString(R.string.need_model))
+            return
+        }
+        val modelPath = ModelManager(this).modelPath(spec)
+        engine = when (prefs.engine) {
+            Engine.WHISPER -> WhisperEngine(mp, source, modelPath, this)
+            Engine.VOSK -> VoskEngine(mp, source, modelPath, this)
+        }.also { it.start(previous) }
         updateNotification()
     }
 
@@ -139,6 +148,11 @@ class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listen
     }
 
     override fun onPartial(text: String) {
+        if (text == SpeechEngine.SPEAKING) {
+            // Whisper heard speech but has no text yet.
+            overlay?.setLive("", text)
+            return
+        }
         curOriginal = text
         overlay?.setLive(curOriginal, curTranslated)
         translatePartial(text)
@@ -175,6 +189,10 @@ class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listen
     // ---- SubtitleOverlay.Listener ----
 
     override fun onStopRequested() = stopSelf()
+
+    override fun onSettingsRequested() {
+        startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 
     override fun onSourceSelected(code: String) {
         prefs.sourceLang = code
@@ -248,8 +266,8 @@ class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listen
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val source = Languages.source(prefs.sourceLang)
-        val target = Languages.target(prefs.targetLang)
+        val source = prefs.language
+        val target = Languages.get(prefs.targetLang)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_subtitles)
             .setContentTitle(getString(R.string.notification_title))

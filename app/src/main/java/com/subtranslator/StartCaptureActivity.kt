@@ -54,8 +54,13 @@ class StartCaptureActivity : AppCompatActivity() {
         }
 
         val prefs = Prefs(this)
-        val source = Languages.source(prefs.sourceLang)
-        if (!ModelManager(this).isVoskModelReady(source)) {
+        if (prefs.engine == Engine.WHISPER && !WhisperLib.isCpuSupported) {
+            Toast.makeText(this, R.string.whisper_cpu_unsupported, Toast.LENGTH_LONG).show()
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            finish()
+            return
+        }
+        if (!ModelManager(this).isReady(prefs.recognitionModel)) {
             Toast.makeText(this, R.string.need_model, Toast.LENGTH_LONG).show()
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             finish()

@@ -9,25 +9,19 @@ import android.media.projection.MediaProjection
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import org.json.JSONObject
-import org.vosk.LibVosk
-import org.vosk.LogLevel
-import org.vosk.Model
-import org.vosk.Recognizer
-import java.io.File
 
 /**
- * Captures audio played by other apps (AudioPlaybackCapture) and runs it through Vosk.
- * All callbacks are delivered on the main thread.
+ * Captures audio played by other apps (AudioPlaybackCapture) on a background thread and feeds
+ * it to a speech recognizer. All listener callbacks are delivered on the main thread.
  */
-class SpeechEngine(
+abstract class SpeechEngine(
     private val projection: MediaProjection,
-    private val language: SourceLanguage,
-    private val modelDir: File,
+    protected val language: Language,
     private val listener: Listener,
 ) {
     interface Listener {
         fun onReady()
+        /** In-progress text; [SPEAKING] when speech is heard but no text is available yet. */
         fun onPartial(text: String)
         fun onFinal(text: String)
         fun onError(message: String)
@@ -36,100 +30,84 @@ class SpeechEngine(
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile
-    private var running = false
+    protected var running = false
+        private set
     private var thread: Thread? = null
 
-    fun start() {
+    /** Starts capturing; if [previous] is given, waits for it to release its model first. */
+    fun start(previous: SpeechEngine? = null) {
         running = true
-        thread = Thread(::run, "speech-engine").apply { start() }
+        thread = Thread({
+            previous?.thread?.join()
+            run()
+        }, javaClass.simpleName).apply { start() }
     }
 
+    /** Asks the engine to stop; it releases its resources on its own thread. */
     fun stop() {
         running = false
-        thread?.join(2000)
-        thread = null
     }
+
+    /** Loads the model. Runs on the engine thread. */
+    protected abstract fun open()
+
+    /** Reads [record] until [running] turns false. */
+    protected abstract fun process(record: AudioRecord)
+
+    /** Releases the model. Always called, even if [open] failed. */
+    protected abstract fun close()
 
     @SuppressLint("MissingPermission") // checked by StartCaptureActivity before the service starts
     private fun run() {
-        var model: Model? = null
-        var recognizer: Recognizer? = null
         var record: AudioRecord? = null
         try {
-            LibVosk.setLogLevel(LogLevel.WARNINGS)
-            model = Model(modelDir.absolutePath)
-            recognizer = Recognizer(model, SAMPLE_RATE.toFloat())
-
-            val config = AudioPlaybackCaptureConfiguration.Builder(projection)
-                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                .build()
-            val format = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(SAMPLE_RATE)
-                .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                .build()
-            val minBuf = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
-            )
-            record = AudioRecord.Builder()
-                .setAudioFormat(format)
-                .setBufferSizeInBytes(maxOf(minBuf, SAMPLE_RATE * 2))
-                .setAudioPlaybackCaptureConfig(config)
-                .build()
+            open()
+            record = createRecord()
             if (record.state != AudioRecord.STATE_INITIALIZED) {
-                post { listener.onError("Không khởi tạo được thu âm hệ thống") }
+                postError("Không khởi tạo được thu âm hệ thống")
                 return
             }
             record.startRecording()
             post { listener.onReady() }
-
-            val buffer = ShortArray(SAMPLE_RATE / 5) // 200 ms chunks
-            var lastPartial = ""
-            var samplesInUtterance = 0
-            while (running) {
-                val n = record.read(buffer, 0, buffer.size)
-                if (n <= 0) {
-                    if (n < 0) Log.w(TAG, "AudioRecord.read returned $n")
-                    continue
-                }
-                samplesInUtterance += n
-                val isFinal = recognizer.acceptWaveForm(buffer, n)
-                if (isFinal || (lastPartial.isNotEmpty() && samplesInUtterance > MAX_UTTERANCE_SAMPLES)) {
-                    // Long uninterrupted speech never hits Vosk's silence endpoint; cut it manually.
-                    val json = if (isFinal) recognizer.result else recognizer.finalResult
-                    val text = clean(JSONObject(json).optString("text"))
-                    lastPartial = ""
-                    samplesInUtterance = 0
-                    if (text.isNotEmpty()) post { listener.onFinal(text) }
-                } else {
-                    val text = clean(JSONObject(recognizer.partialResult).optString("partial"))
-                    if (text.isEmpty()) samplesInUtterance = 0
-                    if (text != lastPartial) {
-                        lastPartial = text
-                        if (text.isNotEmpty()) post { listener.onPartial(text) }
-                    }
-                }
-            }
+            process(record)
         } catch (t: Throwable) {
             Log.e(TAG, "Speech engine failed", t)
-            post { listener.onError(t.message ?: t.javaClass.simpleName) }
+            postError(t.message ?: t.javaClass.simpleName)
         } finally {
             try {
                 record?.stop()
             } catch (_: IllegalStateException) {
             }
             record?.release()
-            recognizer?.close()
-            model?.close()
+            close()
         }
     }
 
-    private fun clean(text: String): String {
-        val t = text.trim()
-        return if (language.joinWithoutSpaces) t.replace(" ", "") else t
+    @SuppressLint("MissingPermission")
+    private fun createRecord(): AudioRecord {
+        val config = AudioPlaybackCaptureConfiguration.Builder(projection)
+            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+            .addMatchingUsage(AudioAttributes.USAGE_GAME)
+            .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+            .build()
+        val format = AudioFormat.Builder()
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setSampleRate(SAMPLE_RATE)
+            .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+            .build()
+        val minBuf = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+        )
+        return AudioRecord.Builder()
+            .setAudioFormat(format)
+            .setBufferSizeInBytes(maxOf(minBuf, SAMPLE_RATE * 2))
+            .setAudioPlaybackCaptureConfig(config)
+            .build()
     }
+
+    protected fun postPartial(text: String) = post { listener.onPartial(text) }
+    protected fun postFinal(text: String) = post { listener.onFinal(text) }
+    private fun postError(message: String) = post { listener.onError(message) }
 
     private fun post(block: () -> Unit) {
         if (running) main.post { if (running) block() }
@@ -138,6 +116,6 @@ class SpeechEngine(
     companion object {
         private const val TAG = "SpeechEngine"
         const val SAMPLE_RATE = 16000
-        private const val MAX_UTTERANCE_SAMPLES = SAMPLE_RATE * 7
+        const val SPEAKING = "…"
     }
 }

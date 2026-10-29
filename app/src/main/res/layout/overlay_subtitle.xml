@@ -46,6 +46,18 @@
                     android:contentDescription="@string/change_text_size"
                     android:padding="8dp"
                     android:src="@drawable/ic_text_size" />
+
+                <ImageView
+                    android:id="@+id/settingsButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/overlay_round_button"
+                    android:contentDescription="@string/settings"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_settings"
+                    android:tint="#FFFFFFFF" />
             </LinearLayout>
 
             <View

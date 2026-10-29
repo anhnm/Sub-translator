@@ -11,8 +11,20 @@
     <string name="jump_to_latest">↓ Mới nhất</string>
     <string name="text_size">Cỡ chữ: %1$d</string>
 
+    <string name="recognizer">Bộ nhận dạng giọng nói</string>
+    <string name="engine_whisper">Whisper — chính xác (khuyên dùng)</string>
+    <string name="engine_vosk">Vosk — nhẹ, nhanh nhưng kém chính xác</string>
+    <string name="whisper_base">Mô hình Base (~57 MB) — nhanh hơn</string>
+    <string name="whisper_small">Mô hình Small (~181 MB) — chính xác hơn</string>
+    <string name="whisper_shared_hint">Một mô hình Whisper dùng chung cho mọi ngôn ngữ.</string>
+    <string name="whisper_cpu_unsupported">CPU của máy không hỗ trợ Whisper. Hãy chọn bộ nhận dạng Vosk.</string>
+    <string name="vosk_unsupported">Vosk không hỗ trợ ngôn ngữ này. Hãy dùng Whisper.</string>
     <string name="model_ready">✓ Mô hình nhận dạng đã sẵn sàng (offline)</string>
-    <string name="model_missing">Chưa có mô hình nhận dạng. Tải một lần, sau đó chạy offline.</string>
+    <string name="model_missing">Chưa có mô hình nhận dạng (~%1$d MB). Tải một lần, sau đó chạy offline. Đang tải vẫn có thể thoát app.</string>
+    <string name="download_waiting">Đang chờ mạng… %1$d%%</string>
+    <string name="download_failed_reason">Tải thất bại (mã %1$d). Hãy thử lại.</string>
+    <string name="cancel_download">Hủy tải</string>
+    <string name="model_download_title">Sub Dịch: tải mô hình %1$s</string>
     <string name="download_model">Tải mô hình</string>
     <string name="delete_model">Xóa mô hình</string>
     <string name="downloading">Đang tải…</string>

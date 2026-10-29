@@ -29,6 +29,7 @@ class SubtitleOverlay(
 ) {
     interface Listener {
         fun onStopRequested()
+        fun onSettingsRequested()
         fun onSourceSelected(code: String)
         fun onTargetSelected(code: String)
     }
@@ -68,6 +69,7 @@ class SubtitleOverlay(
         binding.collapseButton.setOnClickListener { setCollapsed(true) }
         binding.textSizeButton.setOnClickListener { cycleTextSize() }
         binding.languageChip.setOnClickListener { showLanguageMenu() }
+        binding.settingsButton.setOnClickListener { listener.onSettingsRequested() }
         binding.stopButton.setOnClickListener { listener.onStopRequested() }
         attachDrag(binding.toolbar, onTap = null)
         attachDrag(binding.pill, onTap = { setCollapsed(false) })
@@ -203,7 +205,13 @@ class SubtitleOverlay(
         val menu = PopupMenu(context, binding.languageChip)
         val listen = menu.menu.addSubMenu(R.string.source_language)
         // Only languages whose speech model is downloaded can be switched to on the fly.
-        Languages.sources.filter { models.isVoskModelReady(it) }.forEach { lang ->
+        val canListen = { lang: Language ->
+            when (prefs.engine) {
+                Engine.WHISPER -> true // one model covers every language
+                Engine.VOSK -> models.isReady(lang.voskSpec)
+            }
+        }
+        Languages.all.filter(canListen).forEach { lang ->
             listen.add(lang.label).setCheckable(true).setChecked(lang.code == prefs.sourceLang)
                 .setOnMenuItemClickListener {
                     if (lang.code != prefs.sourceLang) listener.onSourceSelected(lang.code)
@@ -211,7 +219,7 @@ class SubtitleOverlay(
                 }
         }
         val translate = menu.menu.addSubMenu(R.string.target_language)
-        Languages.targets.forEach { lang ->
+        Languages.all.forEach { lang ->
             translate.add(lang.label).setCheckable(true).setChecked(lang.code == prefs.targetLang)
                 .setOnMenuItemClickListener {
                     if (lang.code != prefs.targetLang) listener.onTargetSelected(lang.code)
