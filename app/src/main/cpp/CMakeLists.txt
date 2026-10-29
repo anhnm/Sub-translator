@@ -19,7 +19,6 @@ endif()
 FetchContent_Declare(
     whisper
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(whisper)
 
