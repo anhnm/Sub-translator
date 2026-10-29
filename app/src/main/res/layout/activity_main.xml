@@ -97,6 +97,18 @@
             android:layout_height="wrap_content"
             android:max="20" />
 
+        <TextView
+            android:id="@+id/visibleLinesLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <SeekBar
+            android:id="@+id/visibleLines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="7" />
+
         <Button
             android:id="@+id/toggleButton"
             android:layout_width="match_parent"

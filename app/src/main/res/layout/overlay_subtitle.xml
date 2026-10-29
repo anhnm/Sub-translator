@@ -1,28 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:background="@drawable/overlay_background"
-    android:orientation="vertical"
-    android:paddingHorizontal="14dp"
-    android:paddingVertical="8dp">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@+id/box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/overlay_background"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingBottom="8dp">
+
+        <!-- Drag handle: move the box up/down. -->
+        <FrameLayout
+            android:id="@+id/handle"
+            android:layout_width="match_parent"
+            android:layout_height="20dp">
+
+            <View
+                android:layout_width="36dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center"
+                android:background="@drawable/overlay_handle" />
+        </FrameLayout>
+
+        <com.subtranslator.MaxHeightScrollView
+            android:id="@+id/scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fadingEdgeLength="24dp"
+            android:requiresFadingEdge="vertical"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/lines"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </com.subtranslator.MaxHeightScrollView>
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/original"
+        android:id="@+id/jumpToLatest"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:gravity="center"
-        android:textColor="@color/overlay_original" />
-
-    <TextView
-        android:id="@+id/translated"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:gravity="center"
-        android:shadowColor="#FF000000"
-        android:shadowRadius="3"
-        android:textColor="@color/overlay_translated"
-        android:textStyle="bold" />
-</LinearLayout>
+        android:layout_gravity="bottom|end"
+        android:layout_margin="6dp"
+        android:background="@drawable/overlay_jump_background"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="4dp"
+        android:text="@string/jump_to_latest"
+        android:textColor="#FF000000"
+        android:textSize="13sp"
+        android:visibility="gone" />
+</FrameLayout>

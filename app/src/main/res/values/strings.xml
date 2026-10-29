@@ -7,6 +7,8 @@
     <string name="target_language">Dịch sang</string>
     <string name="display">Hiển thị</string>
     <string name="show_original">Hiện câu gốc phía trên bản dịch</string>
+    <string name="visible_lines">Chiều cao khung phụ đề: %1$d dòng</string>
+    <string name="jump_to_latest">↓ Mới nhất</string>
     <string name="text_size">Cỡ chữ: %1$d</string>
 
     <string name="model_ready">✓ Mô hình nhận dạng đã sẵn sàng (offline)</string>
@@ -28,7 +30,7 @@
     <string name="stop">Dừng</string>
     <string name="add_tile">Thêm nút vào bảng điều khiển nhanh</string>
     <string name="tile_already_added">Nút đã có trong bảng điều khiển nhanh</string>
-    <string name="tile_hint">Mẹo: kéo thanh thông báo xuống → bút chỉnh sửa → kéo ô \"Phụ đề dịch\" vào để bật/tắt nhanh. Hộp phụ đề có thể kéo lên/xuống.</string>
+    <string name="tile_hint">Mẹo: kéo thanh thông báo xuống → bút chỉnh sửa → kéo ô \"Phụ đề dịch\" vào để bật/tắt nhanh. Vuốt trong khung phụ đề để đọc lại câu trước; giữ thanh nhỏ ở trên cùng để kéo khung lên/xuống. Đổi cài đặt hiển thị sẽ áp dụng ở lần bật sau.</string>
 
     <string name="notification_channel">Phụ đề đang chạy</string>
     <string name="notification_title">Đang tạo phụ đề dịch</string>

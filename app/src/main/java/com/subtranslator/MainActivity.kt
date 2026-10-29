@@ -61,6 +61,18 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(sb: SeekBar) {}
         })
 
+        binding.visibleLines.progress = prefs.visibleLines - MIN_VISIBLE_LINES
+        binding.visibleLinesLabel.text = getString(R.string.visible_lines, prefs.visibleLines)
+        binding.visibleLines.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                val lines = progress + MIN_VISIBLE_LINES
+                prefs.visibleLines = lines
+                binding.visibleLinesLabel.text = getString(R.string.visible_lines, lines)
+            }
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
+
         binding.toggleButton.setOnClickListener {
             if (SubtitleService.isRunning) {
                 SubtitleService.stop(this)
@@ -189,5 +201,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val MIN_TEXT_SIZE = 12
+        private const val MIN_VISIBLE_LINES = 1
     }
 }

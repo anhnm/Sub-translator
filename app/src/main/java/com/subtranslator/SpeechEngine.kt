@@ -138,6 +138,6 @@ class SpeechEngine(
     companion object {
         private const val TAG = "SpeechEngine"
         const val SAMPLE_RATE = 16000
-        private const val MAX_UTTERANCE_SAMPLES = SAMPLE_RATE * 12
+        private const val MAX_UTTERANCE_SAMPLES = SAMPLE_RATE * 7
     }
 }

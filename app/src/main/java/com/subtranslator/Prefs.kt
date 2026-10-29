@@ -23,6 +23,11 @@ class Prefs(context: Context) {
         get() = sp.getInt("text_size", 18)
         set(v) = sp.edit { putInt("text_size", v) }
 
+    /** How many subtitle lines the overlay shows before it scrolls. */
+    var visibleLines: Int
+        get() = sp.getInt("visible_lines", 3)
+        set(v) = sp.edit { putInt("visible_lines", v) }
+
     /** Overlay distance from the bottom of the screen, in px. */
     var overlayY: Int
         get() = sp.getInt("overlay_y", -1)

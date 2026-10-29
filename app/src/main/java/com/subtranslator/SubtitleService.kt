@@ -38,18 +38,15 @@ class SubtitleService : Service(), SpeechEngine.Listener {
     private var overlay: SubtitleOverlay? = null
     private var translator: Translator? = null
 
-    // Caption state: the previous finished sentence plus the one currently being spoken.
-    private var prevOriginal = ""
-    private var prevTranslated = ""
+    // Caption state: the sentence currently being spoken (finished ones live in the overlay).
     private var curOriginal = ""
     private var curTranslated = ""
     private var utterance = 0
     private var partialInFlight = false
     private var pendingPartial: String? = null
 
-    private val clearCaptions = Runnable {
-        prevOriginal = ""; prevTranslated = ""; curOriginal = ""; curTranslated = ""
-        overlay?.setText("", "")
+    private val clearStatus = Runnable {
+        if (curOriginal.isEmpty()) overlay?.setLive("", "")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -103,7 +100,7 @@ class SubtitleService : Service(), SpeechEngine.Listener {
 
         overlay = SubtitleOverlay(this, prefs).also {
             it.show()
-            it.setText("", getString(R.string.status_loading_model))
+            it.setLive("", getString(R.string.status_loading_model))
         }
 
         if (source.code != target.code) {
@@ -140,33 +137,26 @@ class SubtitleService : Service(), SpeechEngine.Listener {
     // ---- SpeechEngine.Listener (main thread) ----
 
     override fun onReady() {
-        overlay?.setText("", getString(R.string.status_listening))
-        main.removeCallbacks(clearCaptions)
-        main.postDelayed(clearCaptions, 2500)
+        overlay?.setLive("", getString(R.string.status_listening))
+        main.postDelayed(clearStatus, 2500)
     }
 
     override fun onPartial(text: String) {
+        main.removeCallbacks(clearStatus)
         curOriginal = text
-        render()
+        overlay?.setLive(curOriginal, curTranslated)
         translatePartial(text)
     }
 
     override fun onFinal(text: String) {
+        main.removeCallbacks(clearStatus)
         utterance++
         pendingPartial = null
-        prevOriginal = text
-        prevTranslated = curTranslated // provisional until the full sentence is translated
+        // Show the partial translation until the full sentence is translated.
+        val line = overlay?.addLine(text, curTranslated) ?: return
         curOriginal = ""
         curTranslated = ""
-        render()
-
-        val id = utterance
-        translate(text) { result ->
-            if (id == utterance) {
-                prevTranslated = result
-                render()
-            }
-        }
+        translate(text) { result -> overlay?.updateLine(line, text, result) }
     }
 
     override fun onError(message: String) {
@@ -187,7 +177,7 @@ class SubtitleService : Service(), SpeechEngine.Listener {
             partialInFlight = false
             if (id == utterance) {
                 curTranslated = result
-                render()
+                overlay?.setLive(curOriginal, curTranslated)
             }
             pendingPartial?.let {
                 pendingPartial = null
@@ -206,18 +196,6 @@ class SubtitleService : Service(), SpeechEngine.Listener {
             .addOnSuccessListener { onDone(it) }
             .addOnFailureListener { onDone(text) }
     }
-
-    private fun render() {
-        val original = lines(prevOriginal, curOriginal)
-        val translated = lines(prevTranslated, curTranslated)
-        overlay?.setText(original, translated)
-        main.removeCallbacks(clearCaptions)
-        main.postDelayed(clearCaptions, CLEAR_DELAY_MS)
-    }
-
-    /** Joins caption lines, keeping only the tail of very long ones. */
-    private fun lines(vararg parts: String) = parts.filter { it.isNotBlank() }
-        .joinToString("\n") { if (it.length > MAX_LINE_CHARS) "…" + it.takeLast(MAX_LINE_CHARS) else it }
 
     // ---- Notification ----
 
@@ -260,8 +238,6 @@ class SubtitleService : Service(), SpeechEngine.Listener {
         const val EXTRA_DATA = "data"
         private const val CHANNEL_ID = "subtitles"
         private const val NOTIFICATION_ID = 1
-        private const val CLEAR_DELAY_MS = 6000L
-        private const val MAX_LINE_CHARS = 120
 
         @Volatile
         var isRunning = false
