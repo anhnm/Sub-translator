@@ -96,7 +96,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.versionLabel.text = getString(R.string.version, BuildConfig.VERSION_NAME)
         binding.updateButton.setOnClickListener { checkForUpdate(manual = true) }
-        if (savedInstanceState == null) checkForUpdate(manual = false)
+        if (savedInstanceState == null) {
+            checkForUpdate(manual = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false))
+        }
     }
 
     override fun onResume() {
@@ -279,6 +281,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val EXTRA_CHECK_UPDATE = "check_update"
         private const val MIN_TEXT_SIZE = 12
         private const val MIN_VISIBLE_LINES = 1
     }

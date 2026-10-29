@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <!-- Expanded panel -->
     <LinearLayout
         android:id="@+id/box"
         android:layout_width="match_parent"
@@ -10,25 +11,67 @@
         android:background="@drawable/overlay_background"
         android:orientation="vertical"
         android:paddingHorizontal="14dp"
-        android:paddingBottom="8dp">
+        android:paddingTop="10dp"
+        android:paddingBottom="12dp">
 
-        <!-- Drag handle: move the box up/down. -->
+        <!-- Toolbar; touching its empty area drags the panel. -->
         <FrameLayout
-            android:id="@+id/handle"
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="20dp">
+            android:layout_height="40dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="start"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/collapseButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center_vertical"
+                    android:background="@drawable/overlay_round_button"
+                    android:contentDescription="@string/collapse"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_collapse" />
+
+                <ImageView
+                    android:id="@+id/textSizeButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/overlay_round_button"
+                    android:contentDescription="@string/change_text_size"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_text_size" />
+            </LinearLayout>
 
             <View
-                android:layout_width="36dp"
+                android:layout_width="40dp"
                 android:layout_height="4dp"
                 android:layout_gravity="center"
                 android:background="@drawable/overlay_handle" />
+
+            <TextView
+                android:id="@+id/languageChip"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_gravity="end|center_vertical"
+                android:background="@drawable/overlay_chip"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:textColor="@color/overlay_translated"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </FrameLayout>
 
         <com.subtranslator.MaxHeightScrollView
             android:id="@+id/scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
             android:fadingEdgeLength="24dp"
             android:requiresFadingEdge="vertical"
             android:scrollbars="none">
@@ -39,19 +82,47 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
         </com.subtranslator.MaxHeightScrollView>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/jumpToLatest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start|center_vertical"
+                android:background="@drawable/overlay_jump_background"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="@string/jump_to_latest"
+                android:textColor="#FF000000"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/stopButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="end"
+                android:background="@drawable/overlay_stop_button"
+                android:contentDescription="@string/stop"
+                android:padding="12dp"
+                android:src="@drawable/ic_stop" />
+        </FrameLayout>
     </LinearLayout>
 
+    <!-- Collapsed: one line with the latest subtitle. Tap to expand, drag to move. -->
     <TextView
-        android:id="@+id/jumpToLatest"
-        android:layout_width="wrap_content"
+        android:id="@+id/pill"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="6dp"
-        android:background="@drawable/overlay_jump_background"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="4dp"
-        android:text="@string/jump_to_latest"
-        android:textColor="#FF000000"
-        android:textSize="13sp"
+        android:background="@drawable/overlay_pill_background"
+        android:ellipsize="start"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="10dp"
+        android:singleLine="true"
+        android:textColor="@color/overlay_translated"
         android:visibility="gone" />
 </FrameLayout>

@@ -28,6 +28,10 @@ class Prefs(context: Context) {
         get() = sp.getInt("visible_lines", 3)
         set(v) = sp.edit { putInt("visible_lines", v) }
 
+    var overlayCollapsed: Boolean
+        get() = sp.getBoolean("overlay_collapsed", false)
+        set(v) = sp.edit { putBoolean("overlay_collapsed", v) }
+
     /** Overlay distance from the bottom of the screen, in px. */
     var overlayY: Int
         get() = sp.getInt("overlay_y", -1)

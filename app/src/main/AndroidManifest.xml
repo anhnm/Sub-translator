@@ -20,14 +20,21 @@
         tools:targetApi="34">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".QuickPanelActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:theme="@style/Theme.SubTranslator.Panel">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/settings"
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".StartCaptureActivity"

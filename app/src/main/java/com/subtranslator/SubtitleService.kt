@@ -29,7 +29,7 @@ import com.google.mlkit.nl.translate.TranslatorOptions
  * Foreground service: captures playback audio, recognizes speech, translates it and
  * shows the result in a floating overlay.
  */
-class SubtitleService : Service(), SpeechEngine.Listener {
+class SubtitleService : Service(), SpeechEngine.Listener, SubtitleOverlay.Listener {
 
     private val main = Handler(Looper.getMainLooper())
     private lateinit var prefs: Prefs
@@ -44,10 +44,6 @@ class SubtitleService : Service(), SpeechEngine.Listener {
     private var utterance = 0
     private var partialInFlight = false
     private var pendingPartial: String? = null
-
-    private val clearStatus = Runnable {
-        if (curOriginal.isEmpty()) overlay?.setLive("", "")
-    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -95,29 +91,31 @@ class SubtitleService : Service(), SpeechEngine.Listener {
             }
         }, main)
 
+        overlay = SubtitleOverlay(this, prefs, this).also { it.show() }
+        startPipeline()
+    }
+
+    /** (Re)creates the recognizer and translator for the current language settings. */
+    private fun startPipeline() {
+        val mp = projection ?: return
+        engine?.stop()
+        translator?.close()
+        // Drop captions and pending translations from the previous languages.
+        utterance++
+        curOriginal = ""
+        curTranslated = ""
+        pendingPartial = null
+
         val source = Languages.source(prefs.sourceLang)
         val target = Languages.target(prefs.targetLang)
+        overlay?.updateLanguageChip()
+        overlay?.setLive("", "")
+        overlay?.setStatus(getString(R.string.status_loading_model))
 
-        overlay = SubtitleOverlay(this, prefs).also {
-            it.show()
-            it.setLive("", getString(R.string.status_loading_model))
-        }
-
-        if (source.code != target.code) {
-            translator = Translation.getClient(
-                TranslatorOptions.Builder()
-                    .setSourceLanguage(source.code)
-                    .setTargetLanguage(target.code)
-                    .build()
-            ).also { t ->
-                // No-op when the models are already on the device (normal case).
-                t.downloadModelIfNeeded(DownloadConditions.Builder().build())
-                    .addOnFailureListener { Log.w(TAG, "Translation model unavailable", it) }
-            }
-        }
-
+        translator = createTranslator(source.code, target.code)
         val modelDir = ModelManager(this).voskModelDir(source)
         engine = SpeechEngine(mp, source, modelDir, this).also { it.start() }
+        updateNotification()
     }
 
     override fun onDestroy() {
@@ -137,19 +135,16 @@ class SubtitleService : Service(), SpeechEngine.Listener {
     // ---- SpeechEngine.Listener (main thread) ----
 
     override fun onReady() {
-        overlay?.setLive("", getString(R.string.status_listening))
-        main.postDelayed(clearStatus, 2500)
+        overlay?.setStatus(getString(R.string.status_listening))
     }
 
     override fun onPartial(text: String) {
-        main.removeCallbacks(clearStatus)
         curOriginal = text
         overlay?.setLive(curOriginal, curTranslated)
         translatePartial(text)
     }
 
     override fun onFinal(text: String) {
-        main.removeCallbacks(clearStatus)
         utterance++
         pendingPartial = null
         // Show the partial translation until the full sentence is translated.
@@ -162,6 +157,37 @@ class SubtitleService : Service(), SpeechEngine.Listener {
     override fun onError(message: String) {
         Toast.makeText(this, getString(R.string.error_engine, message), Toast.LENGTH_LONG).show()
         stopSelf()
+    }
+
+    private fun createTranslator(source: String, target: String): Translator? {
+        if (source == target) return null
+        val options = TranslatorOptions.Builder()
+            .setSourceLanguage(source)
+            .setTargetLanguage(target)
+            .build()
+        return Translation.getClient(options).also { t ->
+            // No-op when the models are already on the device (normal case).
+            t.downloadModelIfNeeded(DownloadConditions.Builder().build())
+                .addOnFailureListener { Log.w(TAG, "Translation model unavailable", it) }
+        }
+    }
+
+    // ---- SubtitleOverlay.Listener ----
+
+    override fun onStopRequested() = stopSelf()
+
+    override fun onSourceSelected(code: String) {
+        prefs.sourceLang = code
+        startPipeline()
+    }
+
+    override fun onTargetSelected(code: String) {
+        prefs.targetLang = code
+        // Keep listening; only the translator changes.
+        translator?.close()
+        translator = createTranslator(prefs.sourceLang, code)
+        overlay?.updateLanguageChip()
+        updateNotification()
     }
 
     // ---- Captions ----
@@ -207,6 +233,10 @@ class SubtitleService : Service(), SpeechEngine.Listener {
                 NotificationManager.IMPORTANCE_LOW,
             )
         )
+    }
+
+    private fun updateNotification() {
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun buildNotification(): Notification {

@@ -2,7 +2,9 @@
 <resources>
     <color name="brand">#2962FF</color>
     <color name="launcher_bg">#1A237E</color>
-    <color name="overlay_bg">#B3000000</color>
-    <color name="overlay_original">#FFCFD8DC</color>
-    <color name="overlay_translated">#FFFFEB3B</color>
+    <color name="overlay_bg">#E6232427</color>
+    <color name="overlay_original">#FFB0B4BA</color>
+    <color name="overlay_translated">#FFFFFFFF</color>
+    <color name="overlay_status">#FF9AA0A6</color>
+    <color name="overlay_jump">#FFFFFFFF</color>
 </resources>
