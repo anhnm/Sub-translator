@@ -11,11 +11,13 @@ import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.subtranslator.databinding.ActivityMainBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +26,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var models: ModelManager
     private var voskJob: Job? = null
     private var translateJob: Job? = null
+    private lateinit var updater: Updater
+    private var updateJob: Job? = null
+    /** Downloaded update waiting for the "install unknown apps" permission. */
+    private var pendingApk: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         prefs = Prefs(this)
         models = ModelManager(this)
+        updater = Updater(this)
 
         setupSpinner(binding.sourceSpinner, Languages.sources,
             Languages.sources.indexOf(Languages.source(prefs.sourceLang))) {
@@ -86,11 +93,83 @@ class MainActivity : AppCompatActivity() {
             binding.addTileButton.visibility = View.VISIBLE
             binding.addTileButton.setOnClickListener { requestAddTile() }
         }
+
+        binding.versionLabel.text = getString(R.string.version, BuildConfig.VERSION_NAME)
+        binding.updateButton.setOnClickListener { checkForUpdate(manual = true) }
+        if (savedInstanceState == null) checkForUpdate(manual = false)
     }
 
     override fun onResume() {
         super.onResume()
         refresh()
+        // Back from the "install unknown apps" screen.
+        val apk = pendingApk
+        if (apk != null && updater.canInstall()) {
+            pendingApk = null
+            updater.install(apk)
+        }
+    }
+
+    // ---- Self-update ----
+
+    private fun checkForUpdate(manual: Boolean) {
+        if (updateJob?.isActive == true) return
+        if (manual) {
+            binding.updateButton.isEnabled = false
+            binding.updateButton.setText(R.string.checking_update)
+        }
+        updateJob = lifecycleScope.launch {
+            val result = runCatching { updater.check() }
+            binding.updateButton.isEnabled = true
+            binding.updateButton.setText(R.string.check_update)
+            val info = result.getOrNull()
+            when {
+                info != null -> showUpdateDialog(info)
+                !manual -> Unit // stay quiet on automatic checks
+                result.isFailure -> Toast.makeText(this@MainActivity,
+                    getString(R.string.update_failed, result.exceptionOrNull()?.message),
+                    Toast.LENGTH_LONG).show()
+                else -> Toast.makeText(this@MainActivity, R.string.up_to_date, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showUpdateDialog(info: UpdateInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.update_available, info.versionName))
+            .setMessage(info.notes.ifBlank { null })
+            .setPositiveButton(R.string.update_now) { _, _ -> downloadUpdate(info) }
+            .setNegativeButton(R.string.later, null)
+            .show()
+    }
+
+    private fun downloadUpdate(info: UpdateInfo) {
+        binding.updateButton.isEnabled = false
+        binding.updateProgress.visibility = View.VISIBLE
+        binding.updateProgress.progress = 0
+        updateJob = lifecycleScope.launch {
+            try {
+                val apk = updater.download(info) { p ->
+                    runOnUiThread {
+                        binding.updateProgress.progress = p
+                        binding.updateButton.text = getString(R.string.downloading_percent, p)
+                    }
+                }
+                if (updater.canInstall()) {
+                    updater.install(apk)
+                } else {
+                    pendingApk = apk
+                    Toast.makeText(this@MainActivity, R.string.allow_install, Toast.LENGTH_LONG).show()
+                    updater.requestInstallPermission()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, getString(R.string.update_failed, e.message),
+                    Toast.LENGTH_LONG).show()
+            }
+            binding.updateProgress.visibility = View.GONE
+            binding.updateButton.isEnabled = true
+            binding.updateButton.setText(R.string.check_update)
+        }
     }
 
     private fun <T> setupSpinner(spinner: Spinner, items: List<T>, selected: Int, onSelect: (Int) -> Unit) {

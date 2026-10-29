@@ -3,6 +3,13 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// CI passes its run number so every published build has a higher version than the last.
+val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+
+// Release signing key, provided by CI from repository secrets (never committed).
+val signingKeystore = System.getenv("SIGNING_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+val signingPassword = System.getenv("SIGNING_PASSWORD")
+
 android {
     namespace = "com.subtranslator"
     compileSdk = 35
@@ -11,18 +18,31 @@ android {
         applicationId = "com.subtranslator"
         minSdk = 29 // AudioPlaybackCapture requires Android 10
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildNumber
+        versionName = "1.$buildNumber"
+        buildConfigField("String", "UPDATE_REPO", "\"anhnm/Sub-translator\"")
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    signingConfigs {
+        if (signingKeystore != null) {
+            // A fixed key, so in-app updates can install over the previous version.
+            create("release") {
+                storeFile = signingKeystore
+                storePassword = signingPassword
+                keyAlias = "subdich"
+                keyPassword = signingPassword
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the APK installs directly.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without the secret key (e.g. local builds) fall back to the debug key.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -35,6 +55,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     packaging {
         jniLibs {

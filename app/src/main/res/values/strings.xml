@@ -44,4 +44,15 @@
     <string name="open_app_info">Thông tin ứng dụng</string>
     <string name="need_audio_permission">Cần quyền ghi âm để thu âm thanh đang phát.</string>
     <string name="error_engine">Lỗi phụ đề: %1$s</string>
+
+    <string name="update_section">Cập nhật</string>
+    <string name="version">Phiên bản %1$s</string>
+    <string name="check_update">Kiểm tra cập nhật</string>
+    <string name="checking_update">Đang kiểm tra…</string>
+    <string name="up_to_date">Đang dùng bản mới nhất</string>
+    <string name="update_available">Có bản mới %1$s</string>
+    <string name="update_now">Cập nhật</string>
+    <string name="later">Để sau</string>
+    <string name="update_failed">Cập nhật thất bại: %1$s</string>
+    <string name="allow_install">Hãy cho phép Sub Dịch cài ứng dụng, rồi quay lại app để tiếp tục cập nhật.</string>
 </resources>

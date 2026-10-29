@@ -19,6 +19,20 @@ Nhận dạng giọng nói và dịch đều chạy **offline trên máy**.
 4. Bấm **Bật phụ đề**, cấp quyền *Hiển thị trên ứng dụng khác*, *Ghi âm* và đồng ý *chia sẻ màn hình/âm thanh*.
 5. Thêm nút nhanh: bấm **Thêm nút vào bảng điều khiển nhanh** (Android 13+) hoặc tự kéo ô "Phụ đề dịch" vào khi chỉnh sửa bảng điều khiển nhanh.
 
+## Tự cập nhật
+Mỗi lần push lên nhánh mặc định, GitHub Actions build APK và đăng một **Release** (`v1.<số build>`).
+App tự kiểm tra Release mới nhất khi mở (hoặc bấm **Kiểm tra cập nhật**), tải về và mở trình cài đặt.
+
+Để Android cho cài đè, mọi bản phải ký cùng một khóa. Khóa nằm trong **Secrets** của repo
+(Settings → Secrets and variables → Actions), không commit vào mã nguồn:
+
+| Secret | Nội dung |
+|---|---|
+| `SIGNING_KEY` | File keystore PKCS12 (alias `subdich`) mã hóa base64 |
+| `SIGNING_PASSWORD` | Mật khẩu keystore/khóa |
+
+Nếu thiếu secret, workflow vẫn build (ký bằng khóa debug) nhưng **không** đăng Release.
+
 ## Lưu ý
 - Android bắt buộc hiện hộp thoại đồng ý chia sẻ màn hình **mỗi lần bật** (giới hạn hệ thống, kể cả khi bật từ nút nhanh).
   Trên Android 14+, hãy chọn chia sẻ **toàn màn hình** để thu được âm thanh mọi ứng dụng.

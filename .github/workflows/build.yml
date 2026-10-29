@@ -5,9 +5,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.SIGNING_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -18,10 +23,38 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Restore signing key
+        if: env.HAS_SIGNING_KEY == 'true'
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          echo "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/subdich.jks"
+          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/subdich.jks" >> "$GITHUB_ENV"
+
       - name: Build
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk SubDich-1.${{ github.run_number }}.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: SubDich-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: SubDich-*.apk
+
+      # The app's updater installs the latest release, so only publish builds signed with
+      # the fixed key; otherwise Android would refuse to install them over the current app.
+      - name: Publish release
+        if: >-
+          env.HAS_SIGNING_KEY == 'true' && github.event_name != 'pull_request' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.${{ github.run_number }}
+          name: Sub Dịch 1.${{ github.run_number }}
+          body: ${{ github.event.head_commit.message }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: SubDich-*.apk
