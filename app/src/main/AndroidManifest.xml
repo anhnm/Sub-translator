@@ -33,7 +33,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"
-            android:taskAffinity=".capture"
+            android:taskAffinity="com.subtranslator.capture"
             android:theme="@style/Theme.SubTranslator.Transparent" />
 
         <service
