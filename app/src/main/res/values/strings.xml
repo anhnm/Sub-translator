@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sub Dịch</string>
+    <string name="tile_label">Phụ đề dịch</string>
+
+    <string name="source_language">Ngôn ngữ lắng nghe</string>
+    <string name="target_language">Dịch sang</string>
+    <string name="display">Hiển thị</string>
+    <string name="show_original">Hiện câu gốc phía trên bản dịch</string>
+    <string name="text_size">Cỡ chữ: %1$d</string>
+
+    <string name="model_ready">✓ Mô hình nhận dạng đã sẵn sàng (offline)</string>
+    <string name="model_missing">Chưa có mô hình nhận dạng. Tải một lần, sau đó chạy offline.</string>
+    <string name="download_model">Tải mô hình</string>
+    <string name="delete_model">Xóa mô hình</string>
+    <string name="downloading">Đang tải…</string>
+    <string name="downloading_percent">Đang tải… %1$d%%</string>
+    <string name="unpacking">Đang giải nén…</string>
+    <string name="download_failed">Tải thất bại: %1$s</string>
+
+    <string name="checking">Đang kiểm tra…</string>
+    <string name="translation_ready">✓ Gói dịch đã sẵn sàng (offline)</string>
+    <string name="translation_missing">Chưa có gói dịch cho cặp ngôn ngữ này.</string>
+    <string name="download_translation">Tải gói dịch</string>
+
+    <string name="start_subtitles">Bật phụ đề</string>
+    <string name="stop_subtitles">Tắt phụ đề</string>
+    <string name="stop">Dừng</string>
+    <string name="add_tile">Thêm nút vào bảng điều khiển nhanh</string>
+    <string name="tile_already_added">Nút đã có trong bảng điều khiển nhanh</string>
+    <string name="tile_hint">Mẹo: kéo thanh thông báo xuống → bút chỉnh sửa → kéo ô \"Phụ đề dịch\" vào để bật/tắt nhanh. Hộp phụ đề có thể kéo lên/xuống.</string>
+
+    <string name="notification_channel">Phụ đề đang chạy</string>
+    <string name="notification_title">Đang tạo phụ đề dịch</string>
+    <string name="status_loading_model">Đang nạp mô hình nhận dạng…</string>
+    <string name="status_listening">Đang nghe…</string>
+
+    <string name="need_model">Hãy tải mô hình nhận dạng cho ngôn ngữ đã chọn trước.</string>
+    <string name="need_overlay_permission">Hãy cho phép \"Hiển thị trên ứng dụng khác\" rồi bật lại.</string>
+    <string name="need_audio_permission">Cần quyền ghi âm để thu âm thanh đang phát.</string>
+    <string name="error_engine">Lỗi phụ đề: %1$s</string>
+</resources>
