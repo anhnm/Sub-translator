@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
@@ -62,12 +63,7 @@ class StartCaptureActivity : AppCompatActivity() {
         }
 
         if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, R.string.need_overlay_permission, Toast.LENGTH_LONG).show()
-            startActivity(
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-            finish()
+            showOverlayPermissionHelp()
             return
         }
 
@@ -78,6 +74,25 @@ class StartCaptureActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isEmpty()) requestProjection() else permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    /**
+     * Sideloaded apps on Android 13+ must first enable "Allow restricted settings" in App info,
+     * otherwise the overlay toggle is greyed out. Explain both steps.
+     */
+    private fun showOverlayPermissionHelp() {
+        val packageUri = Uri.parse("package:$packageName")
+        AlertDialog.Builder(this)
+            .setTitle(R.string.overlay_help_title)
+            .setMessage(R.string.overlay_help_message)
+            .setPositiveButton(R.string.open_overlay_settings) { _, _ ->
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, packageUri))
+            }
+            .setNeutralButton(R.string.open_app_info) { _, _ ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri))
+            }
+            .setOnDismissListener { finish() }
+            .show()
     }
 
     private fun requestProjection() {

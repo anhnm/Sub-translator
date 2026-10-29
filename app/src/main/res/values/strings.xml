@@ -36,7 +36,10 @@
     <string name="status_listening">Đang nghe…</string>
 
     <string name="need_model">Hãy tải mô hình nhận dạng cho ngôn ngữ đã chọn trước.</string>
-    <string name="need_overlay_permission">Hãy cho phép \"Hiển thị trên ứng dụng khác\" rồi bật lại.</string>
+    <string name="overlay_help_title">Cần quyền hiển thị phụ đề nổi</string>
+    <string name="overlay_help_message">Hãy bật \"Hiển thị trên các ứng dụng khác\" cho Sub Dịch.\n\nNếu công tắc bị mờ hoặc báo \"Ứng dụng đã bị từ chối cấp quyền\" (app cài từ file APK):\n1. Bấm \"Thông tin ứng dụng\"\n2. Bấm ⋮ ở góc trên bên phải → \"Cho phép cài đặt bị hạn chế\"\n3. Quay lại bật \"Hiển thị trên các ứng dụng khác\"</string>
+    <string name="open_overlay_settings">Mở quyền hiển thị</string>
+    <string name="open_app_info">Thông tin ứng dụng</string>
     <string name="need_audio_permission">Cần quyền ghi âm để thu âm thanh đang phát.</string>
     <string name="error_engine">Lỗi phụ đề: %1$s</string>
 </resources>
